@@ -57,3 +57,62 @@ str(europe)
 europe_table <- table(europe$country, europe$year) #count not value
 View(europe_table)
 
+# working with group_by() & summarize
+str(gapminder %>% group_by(continent)) # subsetting w/in dataframe
+# temp store, no change to data
+
+# summarize mean gdp, mean lifeExp per continent
+gdp_continent <- gapminder %>% 
+  group_by(continent) %>% 
+  summarise(mean_gdp = mean(gdpPercap), mean_lifeExp = mean(lifeExp))
+
+str(gdp_continent)
+
+# plot to bar chart using ggplot
+library(ggplot2)
+summary_plot <- gdp_continent %>% 
+  ggplot(aes(x = mean_gdp, y = mean_lifeExp)) +
+  geom_point(stat = "identity") +
+  theme_bw()
+summary_plot
+
+# calc mean pop for all continents
+meanpop_continent <- gapminder %>% 
+  group_by(continent) %>% 
+  summarise(mean_pop = mean(pop))
+
+# count () & n()
+  # freq count for 2002 records by continent
+  # two == when looking for a value or comparison
+  # one = argument or formula (assignment)
+gapminder %>% 
+  filter(year == 2002) %>% 
+  count(continent, sort = TRUE)
+
+  # using n to cal stand dev and stand err
+gapminder %>% 
+  group_by(continent) %>% 
+  summarise(se = sd(lifeExp)/sqrt(n()))
+
+# mutate() is my friend x*y=z
+
+xy <- data.frame(x = rnorm(100),
+                 y = rnorm(100)) # generates random #s
+head(xy)
+  #view table
+  #create new column, writes to env, not to csv
+xyz <- xy %>%
+  mutate(z = x*y)
+head(xyz)
+  #can write to csv or sep file later
+
+# add full gdp column to gapminder gdp, then per continent
+gdp_per_country <- gapminder %>%
+  mutate(gdp_per_cont = gdpPercap*pop)
+head(gdp_per_country)
+
+# can skip second mutate
+gdp_per_cont <- gapminder %>% 
+  mutate(total_gdp = pop*gdpPercap) %>% 
+  group_by(continent) %>%
+  summarise(cont_gdp = sum(total_gdp))
