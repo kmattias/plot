@@ -56,3 +56,4 @@ europe <- gapminder %>%
 str(europe)
 europe_table <- table(europe$country, europe$year) #count not value
 View(europe_table)
+

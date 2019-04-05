@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1554481220673.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4068386930",
+    "id" : "1147482A",
+    "lastKnownWriteTime" : 1554484977,
+    "last_content_update" : 1554484977292,
+    "path" : "~/Desktop/plot/intro_dplyr.R",
+    "project_path" : "intro_dplyr.R",
+    "properties" : {
+        "cursorPosition" : "58,0",
+        "scrollLine" : "42",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

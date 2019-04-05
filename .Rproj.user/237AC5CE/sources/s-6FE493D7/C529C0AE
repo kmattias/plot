@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1554481914367.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "C529C0AE",
+    "lastKnownWriteTime" : 8097866992125476870,
+    "last_content_update" : 1554481914367,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "EF51294C",
+        "caption" : "gapminder",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=gapminder&cache_key=EF51294C",
+        "displayedObservations" : 1704,
+        "environment" : "",
+        "object" : "gapminder",
+        "preview" : 0,
+        "totalObservations" : 1704,
+        "variables" : 6
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}
