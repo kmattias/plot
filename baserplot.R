@@ -14,6 +14,12 @@ biketown$hour <-
   hms(biketown$StartTime) %>% 
   hour()
 
+biketown$month <- 
+  mdy(biketown$StartDate) %>%
+  month(label = T, abbr = T)
+
+str(biketown)
+
 # same at this in base
 stime <- hms(biketown$StartTime)
 biketown$hour <-  hour(stime)
@@ -30,3 +36,11 @@ hist(ampeak$hour, breaks = seq(7, 10, 1)) # starts at eight end up in first bin 
 # looks at bar plot for the three hours
 barplot(table(ampeak$hour))
 
+freq_by_month <- table(biketown$month)
+barplot(freq_by_month)
+# freq by station
+freq_by_station <- table(biketown$StartHub)
+
+# top 25 stations
+top25_stations <- sort(freq_by_station, decreasing = T) [1:25]
+dotchart(top25_stations)
