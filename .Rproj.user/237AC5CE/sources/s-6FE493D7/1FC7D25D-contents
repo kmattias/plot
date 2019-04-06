@@ -30,10 +30,28 @@ bikenet_long %>%
   filter(bikeid == 139730) # search by bikeid
 
 fac_lengths <- bikenet_long %>% 
-  filter(facility %in% c("BKE-LANE", "BIKE-BLVD", "BKE-BUFF", 
+  filter(facility %in% c("BKE-LANE", "BKE-BLVD", "BKE-BUFF", 
                          "BKE-TRAK", "PTH-REMU")) %>%
   group_by(year, facility) %>% 
   summarise(metres = sum(length_m)) %>% 
   mutate(miles = metres / 1609)
 head(fac_lengths)
 
+p <- ggplot(fac_lengths, aes(x = year, y = miles, 
+                             group = facility, color = facility))
+p + geom_line()
+p + geom_point()
+p + geom_line() + scale_y_log10()
+
+p + geom_line() + labs(title = "Change in Bike Facilities in Portland", 
+                       subtitle = "2008-2013", 
+                       caption = "Source: Oregon Metro") +
+xlab("Year") + 
+ylab("Total miles")
+
+p2 <- ggplot(fac_lengths, aes(x = year, y = miles, group = facility))
+p2 + geom_line(size = 1, color = "blue") +
+  facet_wrap(~ facility) + scale_y_log10()
+
+install.packages("wesanderson")
+library(wesanderson)
