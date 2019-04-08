@@ -1,5 +1,6 @@
 # analyze biketown trip data
 
-source("plot/fetch_biketown.R")
+source("fetch_biketown.R")
 
-get_data(start = "06/2018", end = "08/2018")
+get_data(start = "09/2018", end = "10/2018")
+
