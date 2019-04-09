@@ -13,6 +13,7 @@ library(ggplot2)
 library(modelr)
 library(purrr)
 library(broom)
+library(tidyr)
 ```
 
 # explore and model bike counts for three bridges
@@ -83,7 +84,58 @@ coef(fit_poly) # could access coefs here by name or position
 f <- function(x) {198 * x + -0.99 * x^2} #from regression result
 p <- ggplot(data = data.frame(x = 0), mapping = aes(x = x))
 p + stat_function(fun = f, color = "lightblue", size=2) +
-  xlim(0,110)
+  xlim(0,110) + xlab("deg F") + ylab("count")
 
+```
+```{r modelr sneak peek}
+bikecounts_wx <- bikecounts_wx %>% 
+  add_predictions(fit_poly) %>% 
+  add_residuals(fit_poly) %>% 
+  mutate(resid = resid, pred = pred) #some error here, can't figure out
+
+ggplot() +
+  geom_line(data = bikecounts_wx, aes (x = date, y = total), 
+            color = "salmon") + geom_line(data = bikecounts_wx, aes (x = date, y = pred), 
+                                          # pred value not displaying
+            color = "blue") +
+  facet_grid(bridge ~ ., scales = "free") # free removes constraint
+```
+
+
+```{r split-apply-combine}
+bw_nested <- bikecounts_wx %>% 
+  group_by(bridge) %>% 
+  nest()
+str(bw_nested)
+View(bw_nested)
+
+fit <- lm(total ~ TMIN + TMAX + PRCP,
+          data = bw_nested [[1, "data"]]) %>% 
+  summary()
+
+fit_func <- function(df) {
+  lm(total ~ TMIN + TMAX + PRCP,
+          data = df)
+}
+ # one at a time via function
+fit_func(bw_nested [[1, "data"]])
+
+# two at a time
+fits <- purrr::map(bw_nested$data[1:2], fit_func)
+str(fits)
+
+bw_nested <- bw_nested %>% 
+  mutate(fit = purrr::map(data, fit_func), 
+         tidy = purrr::map(fit, tidy),
+         glance = purrr::map(fit, glance))
+head(bw_nested)
+
+#unpack or combine results
+broom::tidy(bw_nested$fit[[1]])
+
+#unpack for all 3
+bw_nested %>% 
+  unnest(glance) %>% 
+  arrange(desc(r.squared))
 ```
 
