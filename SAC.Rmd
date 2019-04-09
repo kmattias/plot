@@ -1,0 +1,89 @@
+---
+title: "Split-Apply-Combine"
+author: "Kale"
+date: "April 9, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(modelr)
+library(purrr)
+library(broom)
+```
+
+# explore and model bike counts for three bridges
+
+```{r load data}
+source("code/bridge_code.R")
+```
+
+``` {r join the data}
+bikecounts_wx <- bikecounts %>% 
+  left_join(weather, by = c("date" = "DATE")) %>% 
+  select(date, bridge, total, TMIN, TMAX, PRCP)
+
+```
+
+#dplyr joins - left join above returns each row in bikecounts (left) with each matching weather row (right), binding the weather columns by date. mikoontz>multiple table joins google
+```{r explore data}
+ggplot(bikecounts_wx, aes(x = date, y = total, 
+                          group = bridge, color = bridge)) +
+  geom_line() + facet_grid(bikecounts_wx$bridge) + ylim(c(0,10000)) #vertical charts
+# or facet_wrap(bridge ~ .) for bridge against no other option, horizontal charts
+# or facet_grid(bridge ~ .) for horizontal charts
+```
+
+``` {r explore summary stats}
+# avg daily count by bridge
+bikecounts_wx %>% 
+  group_by(bridge) %>% 
+  summarise(avg_daily_counts = mean(total))
+
+# avg month count by bridge year
+bikecounts_wx %>% 
+  group_by(bridge, month(date)) %>% 
+  summarise(avg_month_counts = mean(total)) %>% 
+  View()
+
+# daily avg by month all time by bridge
+avg_month_counts <- bikecounts_wx %>% 
+  group_by(bridge, month=month(date, label = T)) %>% 
+  summarise(avg_month_counts = mean(total)) %>% 
+  as.data.frame()
+
+str(avg_month_counts)
+# use aggregate for more complex
+# group by and summarize can be messy
+#cannot pipe to ggplot, so use as.data.frame
+
+ggplot(avg_month_counts, aes(x = month, y = avg_month_counts, color = bridge)) +
+  geom_point(size = 2)
+  
+```
+
+```{r model fitting}
+# models return list objects describing fit
+fit <- lm(total ~ TMIN + TMAX + PRCP + bridge, data = bikecounts_wx)
+summary(fit)
+plot(fit)
+
+fit2 <- lm(log(total) ~ TMIN + TMAX + PRCP + bridge, data = bikecounts_wx) 
+summary(fit2)
+
+plot(fit2)
+
+fit_poly <- lm(log(total) ~ TMIN + TMAX + I(TMAX^2) + PRCP + bridge, data = bikecounts_wx)
+  summary(fit_poly)
+  
+coef(fit_poly) # could access coefs here by name or position
+f <- function(x) {198 * x + -0.99 * x^2} #from regression result
+p <- ggplot(data = data.frame(x = 0), mapping = aes(x = x))
+p + stat_function(fun = f, color = "lightblue", size=2) +
+  xlim(0,110)
+
+```
+
