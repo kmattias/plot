@@ -1,0 +1,101 @@
+---
+title: "Working with Dates and regex"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+```
+
+# Purpose
+Explore BIKETOWN data looking at mean miles travelled per week during the summer of 2018. 06/18-09/18
+
+```{r pull_data}
+source("/users/kalemattias/Desktop/plot/analyze_biketown.R")
+get_data(start = "06/2018", end = "09/2018")
+
+setwd("/users/kalemattias/Desktop/plot/data/biketown/")
+
+folder <- "/users/kalemattias/Desktop/plot/data/biketown/"
+filenames <- list.files(path = folder, pattern = "*.csv", all.files = FALSE,
+                        full.names = FALSE, recursive = FALSE, 
+                        ignore.case = FALSE)
+read_csv_filename <- function(filenames) {
+  ret <- read.csv(filenames, stringsAsFactors = FALSE, 
+                  strip.white = TRUE, na.strings = "")
+ret$Source <- filenames
+ret
+}
+bike_raw <- plyr::ldply(filenames, read_csv_filename)
+
+```
+```{r data wrangling}
+str(bike_raw)
+
+bike_dfl <- bike_raw %>% 
+  mutate(start.datetime = paste(StartDate, StartTime, sep = " "),
+         end.datetime = paste(EndDate, EndTime, sep = " "))
+str(bike_dfl)
+
+# convert start and end date time into date-time format
+# make sure to include time zone
+
+# check acceptable timezone values
+OlsonNames()
+
+bike_dfl$start.datetime <- mdy_hm(bike_dfl$start.datetime, tz= "America/Los_Angeles")
+bike_dfl$end.datetime <- mdy_hm(bike_dfl$end.datetime, tz= "America/Los_Angeles")
+str(bike_dfl)
+
+#convert duration into useable format
+bike_dfl$Duration <- hms(bike_dfl$Duration)
+#error thrown after converting to duration indicating NAs, 
+#check raw data frame for NAs in duration column
+
+sum(is.na(bike_raw$Duration))
+```
+
+"lubridate" has three synonomous functions but they define very different actions:
+1. duration(): time spans are in united of seconds, there is no start date.
+2. interval(): also measrued in unites of seconds, and provides the diff between start and end.
+3. period(): measures time span in units larger than seconds, this is handy when acounting for DST and leap years.
+
+``` {r duration_calc}
+#calc interval
+bike_dfl$interval <- interval(bike_dfl$start.datetime, bike_dfl$end.datetime)
+head(bike_dfl$interval)
+
+# calc duration
+bike_dfl$duration.all <- as.duration(bike_dfl$interval)
+head(bike_dfl$duration.all)
+
+#calc period
+bike_dfl$period <- as.period(bike_dfl$duration.all)
+head(bike_dfl$period)
+
+# floor_date() is hlepful for aggregating
+bike_wkagg <- bike_dfl %>% 
+  mutate(week.datetime = floor_date(start.datetime, unit = "week"))
+head(bike_wkagg$week.datetime)
+
+# calc mean distance travelled in miles per week
+#gdp_continent <- gapminder %>% 
+  #group_by(continent) %>% 
+  #summarise(mean_gdp = mean(gdpPercap), mean_lifeExp = mean(lifeExp))
+
+wk_avg_dist <- bike_wkagg %>%
+  group_by(week.datetime) %>% 
+  summarise(weekly.mean_dist = mean(Distance_Miles))
+View(wk_avg_dist)
+
+wk_avg_dist_fig <- wk_avg_dist %>% 
+  ggplot(aes(x = as.Date(week.datetime), y = weekly.mean_dist)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  scale_x_date(date_breaks = "1 week") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+wk_avg_dist_fig
+```
