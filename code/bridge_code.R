@@ -27,4 +27,5 @@ bikecounts <- lapply(bridge_names, load_data,
 # factorize bridge name
 bikecounts <- bikecounts %>% mutate(bridge = factor(bridge))
 
-
+# read in weather data
+weather <- read_csv("data/NCDC-CDO-USC00356750.csv")
