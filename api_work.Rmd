@@ -1,0 +1,67 @@
+---
+title: "API_work"
+author: "Kale"
+date: "April 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(httr)
+library(jsonlite)
+library(dplyr)
+
+```
+
+```{r contruct call}
+#DO NOT PUSH OR COMMITT api key
+appid <- "xxxxxx"
+base_url <- "https://developer.trimet.org/ws/v2/arrivals" # found in docs in developer trimet website
+locIDS <- "locIDS=5887,5889,5890,5892" #remove spaces, review documentation
+
+call_1 <- paste(base_url, "?", locIDS, "&", appid, sep = "")
+
+call_1
+```
+``` {r  call in data for trimet}
+# make a GET request
+get_arrivals <- GET(call_1)
+#from httr package
+
+http_status(get_arrivals)
+```
+
+``` {r explore GET request}
+
+names(get_arrivals) # view names
+headers(get_arrivals) # view by class (list of lists)
+# this dataset has lists of list, package #rlists will help unpack (no example here)
+parse_arrivals <- fromJSON(content(get_arrivals, "text")) # no encoding supplied not error, OK. found set of data under parse arrivals>results set.
+
+results <- parse_arrivals[["resultSet"]]
+arrivals <- results[["arrival"]]
+```
+#baser functions
+# use to odd characters or values within a string, find and replace using sub/gsub
+sub: provides an index of where the pattern occurs
+gsub: replaces all occurances of pattern (logical)
+
+
+#find word within a string, and replace with a different word of the whole string
+grep: index of where pattern occurs
+grepl: replaces all occurances of pattern (logical)
+
+
+```{r intro to regular expressions}
+biketown %>% 
+  filter(grepl("community", ignore.case = T, StartHub)) #for everything that do not contain comminity use !grepl("community"...
+biketown_stations <- biketown %>% 
+  mutate(station.category = if_else(grepl("community", StartHub, ignore.case = TRUE),"Community", if_else(grepl(" ", StartHub, ignore.case = TRUE),"BIKETOWN Station", "Other")))
+View(biketown_stations)
+# using space to indicate text, should start with marking data as na treated in specific way
+
+sum(is.na(biketown$StartHub)) # to count NA values
+
+```
+

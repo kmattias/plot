@@ -15,7 +15,7 @@ pacman::p_load("readr")
 
 get_data <- function(start, end,
                      base_url="https://s3.amazonaws.com/biketown-tripdata-public/",
-                   outdir="data/") {
+                   outdir="data/biketown/") {
   # if no end date given, set to now
   
   end <- ifelse(is.null(end), format(now(), "%m/%Y"), end)

@@ -1,0 +1,149 @@
+---
+title: "Spatial Data"
+author: "Kale"
+date: "April 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+install.packages("sf")
+library(sf)
+install.packages("lwgeom")
+library(lwgeom)
+install.packages("tidycensus")
+library(tidycensus)
+library(ggplot2)
+library(tidyr)
+install.packages("ggsn")
+library(ggsn)
+install.packages("mapview")
+library(mapview)
+```
+
+``` {r tidycensus}
+census_api_key("xxxxxx")
+# DO NOT PUSH OR COMMIT to github
+
+v17 <- tidycensus::load_variables(2017, "acs5", cache = TRUE) #year, 5 yr variable, cache will hold table in mem
+pdx_tracts_raw <- get_acs(geography = "tract", year = 2017, 
+                          variables = c("B19013_001", "B03002_003", "B01003_001"), 
+                          state = "OR", county = c("Multnomah County"), 
+                          geometry = TRUE) %>%  #med income, white non hisp, pop
+  select(GEOID, variable, estimate, geometry)
+head(pdx_tracts_raw)
+```
+
+``` {r tidycensus tidy}
+pdx_tracts <- pdx_tracts_raw %>% 
+  spread(key = variable, value = estimate) %>% 
+  rename(medinc = B19013_001, white = B03002_003, pop = B01003_001) %>% 
+  mutate(nwhite = (pop-white)/pop, area = st_area(geometry))  # area will have units
+
+pdx_tracts_p <- st_transform(pdx_tracts, crs = 2838) %>% # lookup info
+  mutate(area = st_area(geometry))
+
+plot(pdx_tracts_p)  
+
+pdx_tracts_p %>% 
+  arrange(desc(area))
+pdx_tracts_p <- pdx_tracts_p %>% 
+  filter(area < units::as_units(1e8, "m^2")) #100 million, need to give units
+plot(pdx_tracts_p)
+
+p <- pdx_tracts_p %>% 
+ggplot()
+p+geom_sf(aes(fill = medinc))
+p+geom_sf(aes(fill = nwhite)) +
+  scale_fill_distiller(direction = -1) # flip the ramp? or lookup with hexcodes 
+#and define high low values
+
+p+geom_sf(aes(fill = medinc), color = "lightgray") +
+  coord_sf(datum = 2838) + # to force the coodinate system
+  #blank() # removes gridlines and graticules
+  #theme_dark() # changes to gray backround, but add lines and graticules back
+  scale_fill_viridis_c(option = "plasma", direction = -1) +
+    #xlim(232.5e4, 234e4) + ylim(205e3, 215e3) +
+  blank() +
+  ggsn::north(pdx_tracts_p, symbol = 3, scale = 0.15) + 
+  ggsn::scalebar(pdx_tracts_p, dist = 4, dist_unit = "km", transform = FALSE, st.size = 3)
+```
+```{r load biketown data}
+source("/Users/kalemattias/Desktop/plot/code/fetch_biketown.R")
+outdir <- "/Users/kalemattias/Desktop/plot/data/biketown/"
+biketown <- get_data(start = "01/2018", end = "12/2018", outdir = "/Users/kalemattias/Desktop/plot/data/biketown/")
+
+#stitch all files together
+biketown_2018 <- paste0(outdir, list.files(outdir)) %>% 
+  lapply(read.csv, stringsAsFactors = FALSE) %>% 
+  bind_rows()
+head(biketown_2018)
+
+# for e.g. shapefiles, just use sf::read_sf()
+biketown <- biketown_2018
+rm(biketown_2018) #remove
+rm(biketwon) 
+hubs_start_sf <- biketown %>% 
+  group_by(StartHub) %>% 
+  summarise(lat = mean(StartLatitude), 
+            lng = mean(StartLongitude), 
+            starts = n()) %>% 
+  filter(!is.na(lat) & !is.na(lng)) %>% #filters out where lat AND lng is not avail
+  st_as_sf(coords = c("lng", "lat"), crs = 4326, agr = "constant") #xy is lnglat
+
+mapview(hubs_start_sf, zcol = "starts", cex = "starts") #cex change point size to relative or number
+# leaflet is package in r, can use to edit more if needed
+
+hubs_end <- biketown %>% 
+  group_by(EndHub) %>% 
+  summarise(lat = mean(EndLatitude), 
+            lng = mean(EndLongitude), 
+            ends = n())
+hubs_end_sf <- hubs_end %>% 
+  filter(!is.na(lat) & !is.na(lng)) %>% #filters out where lat AND lng is not avail
+  st_as_sf(coords = c("lng", "lat"), crs = 4326, agr = "constant") #xy is lnglat
+
+hubs_end_sf <- hubs_end
+mapview(hubs_end_sf, zcol = "ends", cex = "ends")
+
+m1 <- mapview(hubs_start_sf, zcol = "starts", cex = "starts") 
+m2 <- mapview(hubs_end_sf, zcol = "ends", cex = "ends")
+sync(m1, m2) # shows both starts and ends side by side
+
+#calc ratio of starts and ends
+hubs_ratio_sf <- inner_join(hubs_start_sf, #wont let join to conflicting geom
+                            hubs_end, 
+                            by = c("StartHub" = "EndHub")) %>% 
+  mutate(starts_to_ends = starts / ends, 
+         ends_to_starts = ends / starts)
+
+m3 <- mapview(hubs_ratio_sf, zcol = "starts_to_ends",
+              cex = "starts_to_ends") 
+m4 <- mapview(hubs_ratio_sf, zcol = "ends_to_starts", 
+              cex = "ends_to_starts")
+sync(m3, m4) #shows both starts and ends side by side
+
+```
+``` {r spatial joins}
+hubs_start_sf_p <- hubs_start_sf %>% 
+  st_transform(2838)
+
+hubs_start_sf_p <- hubs_start_sf_p %>% 
+  sf::st_join(pdx_tracts_p)
+View(hubs_start_sf_p) #biketown stations joined with census data
+```
+
+``` {r saves}
+# to save data pulled from census, can save as .csv or .rds (rdata file)
+# save raw and then cleaned/useable file
+saveRDS(pdx_tracts_raw, "/Users/kalemattias/Desktop/plot/data/pdx_tracts_raw.rds")
+ # to save flat file
+write.csv(biketown, "/Users/kalemattias/Desktop/plot/data/biketown/biketown_raw.csv", row.names = FALSE) #eliminates row numbers
+saveRDS(biketown, "/Users/kalemattias/Desktop/plot/data/biketown/biketown_raw.rds")
+```
+
+DONT FORGET API KEY
+change option to eval = false to hide items, but keep all to give multiple options to users
+send actual html file, give instructions to download and then open in web browser.
